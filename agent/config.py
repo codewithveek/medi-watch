@@ -28,7 +28,14 @@ class Settings(BaseSettings):
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
-    alert_phone_numbers: list[str] = []
+    alert_phone_numbers: str = ""  # comma-separated: +1234567890,+0987654321
+
+    @property
+    def phone_numbers(self) -> list[str]:
+        """Parse comma-separated phone numbers string into a list."""
+        if not self.alert_phone_numbers:
+            return []
+        return [n.strip() for n in self.alert_phone_numbers.split(",") if n.strip()]
 
     # --- Channel toggles ---
     enable_voice_alerts: bool = True

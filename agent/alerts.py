@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from agent.types import AlertChannel, AlertPayload, AuditEntry
+from agent.schemas import AlertChannel, AlertPayload, AuditEntry
 
 if TYPE_CHECKING:
     from agent.config import Settings
@@ -86,7 +86,7 @@ class AlertDispatcher:
         broadcast_fn: object | None = None,
     ) -> AuditEntry:
         """Dispatch to a single channel and return an audit entry."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         try:
             if channel == AlertChannel.DASHBOARD:

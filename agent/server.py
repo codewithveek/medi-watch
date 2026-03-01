@@ -14,7 +14,7 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 from uuid import uuid4
 
@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from agent.alerts import AlertDispatcher
 from agent.config import Settings
 from agent.processors import MediWatchProcessor
-from agent.types import (
+from agent.schemas import (
     AgentStatus,
     AlertPayload,
     EventType,
@@ -182,7 +182,7 @@ async def _handle_acknowledgment(
 
     alert = _active_alerts.get(alert_id)
     if alert:
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         alert.acknowledged = True
         alert.acknowledged_at = now
         alert.acknowledged_by = acknowledged_by

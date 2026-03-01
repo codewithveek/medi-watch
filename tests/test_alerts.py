@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from agent.alerts import AlertDispatcher
-from agent.types import AlertChannel, AlertPayload, FrameMetadata, EventType, Severity
+from agent.schemas import AlertChannel, AlertPayload, FrameMetadata, EventType, Severity
 
 
 def _make_test_alert(channels: list[AlertChannel] | None = None) -> AlertPayload:

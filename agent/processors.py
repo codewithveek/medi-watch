@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from agent.types import (
+from agent.schemas import (
     DEFAULT_SEVERITY,
     AlertChannel,
     AlertPayload,
