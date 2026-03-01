@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     yolo_model_path: str = "weights/yolo11n-pose.pt"
     moondream_device: str = "cuda"  # "cuda" | "cpu"
 
+    # --- Local camera ---
+    camera_index: int = 0  # OpenCV VideoCapture device index
+    camera_fps: int = 15  # Target frames per second for capture
+    camera_width: int = 640  # Capture resolution width
+    camera_height: int = 480  # Capture resolution height
+    frame_jpeg_quality: int = 60  # JPEG quality for base64 streaming (1-100)
+    enable_local_camera: bool = True  # Enable local webcam capture
+
     # --- Server ---
     agent_port: int = 8080
     cors_origin: str = "http://localhost:5173"

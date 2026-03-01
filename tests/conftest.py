@@ -25,7 +25,7 @@ def mock_settings() -> Settings:
         twilio_account_sid="test-twilio-sid",
         twilio_auth_token="test-twilio-token",
         twilio_from_number="+15555555555",
-        alert_phone_numbers=["+15555555556"],
+        alert_phone_numbers="+15555555556",
         enable_voice_alerts=False,  # Disabled in tests — no external calls
         enable_sms_alerts=False,
         enable_call_alerts=False,

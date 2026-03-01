@@ -44,8 +44,11 @@ export function useAlerts(): UseAlertsReturn {
       return updated;
     });
 
-    // Always append to event log (append-only)
-    setEventLog((prev) => [...prev, { ...alert, eventType: alert.event_type }]);
+    // Append to event log (append-only, but deduplicate by ID)
+    setEventLog((prev) => {
+      if (prev.some((e) => e.id === alert.id)) return prev;
+      return [...prev, { ...alert, eventType: alert.event_type }];
+    });
   }, []);
 
   const acknowledgeAlert = useCallback(

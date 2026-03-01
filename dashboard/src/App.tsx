@@ -36,6 +36,7 @@ const DEFAULT_SETTINGS: AgentSettings = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("monitor");
   const [metrics, setMetrics] = useState<MetricsPayload | null>(null);
+  const [frameData, setFrameData] = useState<string | undefined>(undefined);
   const [agentSettings, setAgentSettings] =
     useState<AgentSettings>(DEFAULT_SETTINGS);
 
@@ -57,12 +58,28 @@ const App: React.FC = () => {
     setMetrics(m);
   }, []);
 
+  // Handle incoming frame
+  const handleFrame = useCallback((data: string) => {
+    setFrameData(data);
+  }, []);
+
   // WebSocket connection
-  const { status, sendMessage } = useAgentSocket({
+  const { status, sendMessage, disconnect, reconnect } = useAgentSocket({
     url: `ws://${window.location.hostname}:8080/ws`,
     onAlert: handleAlert,
     onMetrics: handleMetrics,
+    onFrame: handleFrame,
   });
+
+  // Toggle streaming
+  const handleToggleStreaming = useCallback(() => {
+    if (status === "connected" || status === "connecting") {
+      disconnect();
+      setFrameData(undefined);
+    } else {
+      reconnect();
+    }
+  }, [status, disconnect, reconnect]);
 
   // Acknowledge alert handler
   const handleAcknowledge = useCallback(
@@ -127,16 +144,67 @@ const App: React.FC = () => {
             ))}
           </nav>
 
-          {/* Active alert count */}
-          {activeAlerts.length > 0 && (
+          {/* Active alert count + stream toggle */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveTab("monitor")}
-              className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400 animate-pulse"
+              onClick={handleToggleStreaming}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                status === "connected"
+                  ? "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                  : "bg-green-500/15 text-green-400 hover:bg-green-500/25"
+              }`}
+              aria-label={
+                status === "connected" ? "Stop streaming" : "Start streaming"
+              }
             >
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-              {activeAlerts.length} Alert{activeAlerts.length > 1 ? "s" : ""}
+              {status === "connected" ? (
+                <>
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <rect x="6" y="6" width="12" height="12" rx="1" />
+                  </svg>
+                  <span className="hidden sm:inline">Stop</span>
+                </>
+              ) : status === "connecting" ? (
+                <>
+                  <svg
+                    className="h-3.5 w-3.5 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" d="M4 12a8 8 0 018-8" />
+                  </svg>
+                  <span className="hidden sm:inline">Connecting…</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <polygon points="8,5 19,12 8,19" />
+                  </svg>
+                  <span className="hidden sm:inline">Start</span>
+                </>
+              )}
             </button>
-          )}
+
+            {activeAlerts.length > 0 && (
+              <button
+                onClick={() => setActiveTab("monitor")}
+                className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400 animate-pulse"
+              >
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                {activeAlerts.length} Alert{activeAlerts.length > 1 ? "s" : ""}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -149,7 +217,7 @@ const App: React.FC = () => {
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4">
         {activeTab === "monitor" && (
           <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-            <LiveFeed status={status} metrics={metrics} />
+            <LiveFeed status={status} metrics={metrics} frameData={frameData} />
             <AlertPanel
               alerts={activeAlerts}
               onAcknowledge={handleAcknowledge}

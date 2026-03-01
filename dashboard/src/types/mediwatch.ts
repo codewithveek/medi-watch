@@ -83,7 +83,8 @@ export type AgentMessage =
         acknowledged_at: string;
         acknowledged_by: string;
       };
-    };
+    }
+  | { type: "frame"; payload: { data: string } };
 
 export type DashboardMessage =
   | {

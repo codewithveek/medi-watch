@@ -107,6 +107,34 @@ class AlertPayload:
             "disclaimer": self.disclaimer,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict) -> AlertPayload:
+        """Reconstruct an AlertPayload from a serialized dict."""
+        fm = data.get("frameMetadata", {})
+        return cls(
+            event_type=EventType(data.get("eventType", data.get("event_type", "FALL"))),
+            severity=Severity(data.get("severity", "MEDIUM")),
+            confidence=data.get("confidence", 0.0),
+            detection_model=data.get("detectionModel", data.get("detection_model", "")),
+            description=data.get("description", ""),
+            frame_metadata=FrameMetadata(
+                pose_keypoints=fm.get("poseKeypoints", fm.get("pose_keypoints", [])),
+                bounding_box=fm.get("boundingBox", fm.get("bounding_box", [])),
+                detection_zone=fm.get("detectionZone", fm.get("detection_zone", "")),
+            ),
+            alert_channels=[
+                AlertChannel(ch)
+                for ch in data.get("alertChannels", data.get("alert_channels", []))
+            ],
+            acknowledged=data.get("acknowledged", False),
+            acknowledged_at=data.get("acknowledgedAt", data.get("acknowledged_at")),
+            acknowledged_by=data.get("acknowledgedBy", data.get("acknowledged_by")),
+            staff_note=data.get("staffNote", data.get("staff_note")),
+            id=data.get("id", str(uuid4())),
+            timestamp=data.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            disclaimer=data.get("disclaimer", DISCLAIMER),
+        )
+
 
 @dataclass
 class AuditEntry:
@@ -141,16 +169,21 @@ class MetricsPayload:
     uptime_seconds: float = 0.0
     agent_status: str = AgentStatus.ONLINE.value
     active_model: str = "yolo11n-pose + gemini-2.5-flash"
+    fps: float = 0.0
+    latency_ms: float = 0.0
 
     def to_dict(self) -> dict:
         """Serialize to JSON-safe dictionary."""
         return {
-            "eventsTotal": self.events_total,
-            "alertsSent": self.alerts_sent,
-            "alertsAcknowledged": self.alerts_acknowledged,
-            "avgLatencyMs": self.avg_latency_ms,
-            "avgAckTimeSeconds": self.avg_ack_time_seconds,
-            "uptimeSeconds": self.uptime_seconds,
-            "agentStatus": self.agent_status,
-            "activeModel": self.active_model,
+            "events_total": self.events_total,
+            "alerts_sent": self.alerts_sent,
+            "alerts_acknowledged": self.alerts_acknowledged,
+            "avg_ack_time_seconds": self.avg_ack_time_seconds,
+            "uptime_seconds": self.uptime_seconds,
+            "agent_status": self.agent_status,
+            "active_model": self.active_model,
+            "fps": self.fps,
+            "latency_ms": self.latency_ms,
+            "events_detected": self.events_total,
+            "active_alerts": 0,
         }

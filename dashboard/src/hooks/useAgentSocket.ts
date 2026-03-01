@@ -25,11 +25,14 @@ interface UseAgentSocketOptions {
   onMetrics?: (metrics: MetricsPayload) => void;
   onAgentStatus?: (status: AgentStatusPayload) => void;
   onAckConfirmed?: (alertId: string) => void;
+  onFrame?: (frameData: string) => void;
 }
 
 interface UseAgentSocketReturn {
   status: ConnectionStatus;
   sendMessage: (msg: Record<string, unknown>) => void;
+  disconnect: () => void;
+  reconnect: () => void;
 }
 
 export function useAgentSocket(
@@ -53,9 +56,24 @@ export function useAgentSocket(
     }
   }, []);
 
+  const manualDisconnect = useRef(false);
+
+  const disconnect = useCallback(() => {
+    manualDisconnect.current = true;
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+    wsRef.current?.close();
+    wsRef.current = null;
+    setStatus("disconnected");
+    console.log("[MediWatch] WebSocket manually disconnected");
+  }, []);
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
+    manualDisconnect.current = false;
     setStatus("connecting");
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -68,7 +86,9 @@ export function useAgentSocket(
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data) as AgentMessage;
+        const raw = JSON.parse(event.data);
+        // Normalize type to lowercase — backend sends UPPERCASE, frontend uses lowercase
+        const msg = { ...raw, type: raw.type?.toLowerCase() } as AgentMessage;
 
         switch (msg.type) {
           case "alert":
@@ -83,6 +103,9 @@ export function useAgentSocket(
           case "ack_confirmed":
             callbackRefs.current.onAckConfirmed?.(msg.payload.alert_id);
             break;
+          case "frame":
+            callbackRefs.current.onFrame?.(msg.payload.data);
+            break;
         }
       } catch (err) {
         console.error("[MediWatch] Failed to parse WebSocket message:", err);
@@ -92,8 +115,11 @@ export function useAgentSocket(
     ws.onclose = () => {
       console.log("[MediWatch] WebSocket disconnected");
 
-      // Auto-reconnect
-      if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+      // Only auto-reconnect if not manually disconnected
+      if (
+        !manualDisconnect.current &&
+        reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS
+      ) {
         setStatus("connecting");
         reconnectAttempts.current += 1;
         reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
@@ -119,5 +145,7 @@ export function useAgentSocket(
   return {
     status,
     sendMessage,
+    disconnect,
+    reconnect: connect,
   };
 }

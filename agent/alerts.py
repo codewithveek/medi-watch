@@ -168,7 +168,7 @@ class AlertDispatcher:
 
     async def _dispatch_sms(self, alert: AlertPayload) -> None:
         """Send SMS via Twilio to configured phone numbers."""
-        if not self.settings.twilio_account_sid or not self.settings.alert_phone_numbers:
+        if not self.settings.twilio_account_sid or not self.settings.phone_numbers:
             logger.warning("Twilio not configured or no phone numbers — skipping SMS")
             return
 
@@ -188,7 +188,7 @@ class AlertDispatcher:
                 f"AI-Assisted — Human Verification Required"
             )
 
-            for number in self.settings.alert_phone_numbers:
+            for number in self.settings.phone_numbers:
                 message = client.messages.create(
                     body=body,
                     from_=self.settings.twilio_from_number,
@@ -203,7 +203,7 @@ class AlertDispatcher:
 
     async def _dispatch_call(self, alert: AlertPayload) -> None:
         """Make an automated call via Twilio for escalation."""
-        if not self.settings.twilio_account_sid or not self.settings.alert_phone_numbers:
+        if not self.settings.twilio_account_sid or not self.settings.phone_numbers:
             logger.warning("Twilio not configured — skipping call escalation")
             return
 
@@ -226,7 +226,7 @@ class AlertDispatcher:
                 f"</Say></Response>"
             )
 
-            for number in self.settings.alert_phone_numbers:
+            for number in self.settings.phone_numbers:
                 call = client.calls.create(
                     twiml=twiml,
                     from_=self.settings.twilio_from_number,

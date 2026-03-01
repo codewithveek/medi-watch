@@ -1822,6 +1822,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "opencv-python" },
     { name = "prometheus-client" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -1845,6 +1846,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
+    { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "prometheus-client", specifier = ">=0.20.0" },
     { name = "pydantic-settings", specifier = ">=2.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },

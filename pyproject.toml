@@ -15,6 +15,7 @@ dependencies = [
     "prometheus-client>=0.20.0",
     "ultralytics>=8.0",
     "pydantic-settings>=2.1.0",
+    "opencv-python>=4.13.0.92",
 ]
 
 [project.optional-dependencies]

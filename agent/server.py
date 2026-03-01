@@ -22,6 +22,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from agent.alerts import AlertDispatcher
+from agent.camera import CameraCapture
 from agent.config import Settings
 from agent.processors import MediWatchProcessor
 from agent.schemas import (
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 settings = Settings()
 processor = MediWatchProcessor(settings=settings)
 dispatcher = AlertDispatcher(settings=settings)
+camera = CameraCapture(settings=settings) if settings.enable_local_camera else None
 connected_dashboards: list[WebSocket] = []
 
 # Metrics tracking
@@ -48,15 +50,24 @@ _alerts_sent = 0
 _alerts_acknowledged = 0
 _ack_times: list[float] = []
 _active_alerts: dict[str, AlertPayload] = {}
+_current_fps: float = 0.0
+_frame_latency_ms: float = 0.0
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan — start metrics broadcast task."""
-    task = asyncio.create_task(_metrics_broadcast_loop())
+    """Application lifespan — start metrics broadcast and camera tasks."""
+    tasks: list[asyncio.Task] = []
+    tasks.append(asyncio.create_task(_metrics_broadcast_loop()))
+
+    if camera is not None:
+        tasks.append(asyncio.create_task(_camera_loop()))
+        logger.info("Local camera capture enabled")
+
     logger.info("MediWatch agent server started on port %d", settings.agent_port)
     yield
-    task.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(
@@ -236,6 +247,68 @@ def _camel_to_snake(name: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Camera capture loop
+# ---------------------------------------------------------------------------
+
+
+async def _camera_loop() -> None:
+    """
+    Capture frames from the local webcam, run YOLO pose detection,
+    feed keypoints to the processor, and broadcast frames + alerts.
+    """
+    global _events_total, _alerts_sent, _current_fps, _frame_latency_ms
+
+    if camera is None:
+        return
+
+    fps_counter: list[float] = []
+
+    try:
+        async for _raw_b64, keypoints, annotated_b64 in camera.stream():
+            frame_start = time.time()
+
+            # --- Broadcast the frame to all connected dashboards ---
+            if connected_dashboards:
+                await broadcast_message("FRAME", {"data": annotated_b64})
+
+            # --- Feed keypoints to the processor ---
+            if keypoints is not None:
+                result = await processor.process({"pose_keypoints": keypoints})
+
+                if result and "detected_events" in result:
+                    for event_dict in result["detected_events"]:
+                        _events_total += 1
+
+                        # Reconstruct the AlertPayload from dict
+                        alert = AlertPayload.from_dict(event_dict)
+                        _active_alerts[alert.id] = alert
+
+                        # Dispatch the alert
+                        entries = await dispatcher.dispatch(
+                            alert, broadcast_fn=broadcast_alert
+                        )
+                        _alerts_sent += len(entries)
+
+            # --- Track FPS ---
+            elapsed = time.time() - frame_start
+            _frame_latency_ms = elapsed * 1000
+            fps_counter.append(time.time())
+
+            # Keep only last 30 timestamps for FPS calculation
+            cutoff = time.time() - 1.0
+            fps_counter = [t for t in fps_counter if t > cutoff]
+            _current_fps = len(fps_counter)
+
+    except asyncio.CancelledError:
+        logger.info("Camera loop cancelled")
+    except Exception as e:
+        logger.error("Camera loop error: %s", e, exc_info=True)
+    finally:
+        if camera is not None:
+            camera.stop()
+
+
+# ---------------------------------------------------------------------------
 # Metrics broadcast loop
 # ---------------------------------------------------------------------------
 
@@ -256,6 +329,8 @@ async def _metrics_broadcast_loop() -> None:
                 uptime_seconds=time.time() - _start_time,
                 agent_status=AgentStatus.ONLINE.value,
                 active_model=f"yolo11n-pose + {settings.active_llm}",
+                fps=_current_fps,
+                latency_ms=_frame_latency_ms,
             )
 
             await broadcast_message("METRICS", metrics.to_dict())
