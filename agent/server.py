@@ -131,6 +131,14 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 )
             elif msg_type == "SETTINGS_UPDATE":
                 await _handle_settings_update(msg.get("payload", {}))
+            elif msg_type == "STREAM_PAUSE":
+                if camera is not None:
+                    camera.pause()
+                    logger.info("Camera paused by dashboard")
+            elif msg_type == "STREAM_RESUME":
+                if camera is not None:
+                    camera.resume()
+                    logger.info("Camera resumed by dashboard")
             else:
                 logger.warning("Unknown WebSocket message type: %s", msg_type)
 

@@ -56,13 +56,7 @@ export function useAlerts(): UseAlertsReturn {
       const now = new Date().toISOString();
       const by = acknowledgedBy ?? "staff";
 
-      setActiveAlerts((prev) =>
-        prev.map((a) =>
-          a.id === alertId
-            ? { ...a, acknowledged: true, acknowledgedAt: now, staffNote }
-            : a
-        )
-      );
+      setActiveAlerts((prev) => prev.filter((a) => a.id !== alertId));
 
       setEventLog((prev) =>
         prev.map((e) => {

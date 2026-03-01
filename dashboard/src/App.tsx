@@ -74,21 +74,23 @@ const App: React.FC = () => {
   // Toggle streaming
   const handleToggleStreaming = useCallback(() => {
     if (status === "connected" || status === "connecting") {
+      sendMessage({ type: "STREAM_PAUSE" });
       disconnect();
       setFrameData(undefined);
     } else {
       reconnect();
     }
-  }, [status, disconnect, reconnect]);
+  }, [status, disconnect, reconnect, sendMessage]);
 
   // Acknowledge alert handler
   const handleAcknowledge = useCallback(
     (id: string, staffNote?: string) => {
       acknowledgeAlert(id, staffNote, "Dashboard User");
       sendMessage({
-        type: "acknowledge",
-        alert_id: id,
-        staff_note: staffNote,
+        type: "ACKNOWLEDGE",
+        alertId: id,
+        staffNote: staffNote,
+        acknowledgedBy: "Dashboard User",
       });
     },
     [acknowledgeAlert, sendMessage]

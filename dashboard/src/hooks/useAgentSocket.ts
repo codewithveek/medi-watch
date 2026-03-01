@@ -82,6 +82,8 @@ export function useAgentSocket(
       setStatus("connected");
       reconnectAttempts.current = 0;
       console.log("[MediWatch] WebSocket connected");
+      // Resume camera stream on (re)connect
+      ws.send(JSON.stringify({ type: "STREAM_RESUME" }));
     };
 
     ws.onmessage = (event) => {

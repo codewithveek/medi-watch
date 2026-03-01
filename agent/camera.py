@@ -44,6 +44,7 @@ class CameraCapture:
         self._cap: cv2.VideoCapture | None = None
         self._model = None
         self._running = False
+        self._paused = False
 
     def _init_camera(self) -> bool:
         """Open the webcam. Returns True on success."""
@@ -163,6 +164,11 @@ class CameraCapture:
 
         try:
             while self._running:
+                # If paused, sleep and skip frame capture
+                if self._paused:
+                    await asyncio.sleep(0.25)
+                    continue
+
                 loop_start = time.time()
 
                 # Read frame in a thread to avoid blocking the event loop
@@ -225,6 +231,20 @@ class CameraCapture:
             logger.error("Camera stream error: %s", e, exc_info=True)
         finally:
             self.stop()
+
+    def pause(self) -> None:
+        """Pause frame capture (camera stays open but stops reading)."""
+        self._paused = True
+        logger.info("Camera stream paused")
+
+    def resume(self) -> None:
+        """Resume frame capture."""
+        self._paused = False
+        logger.info("Camera stream resumed")
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused
 
     def _reopen_camera(self) -> None:
         """Release and re-open the camera (recovers from MSMF failures)."""
