@@ -59,6 +59,15 @@ class CameraCapture:
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.camera_height)
         cap.set(cv2.CAP_PROP_FPS, self.settings.camera_fps)
 
+        # Minimize internal MSMF buffer to 1 frame so stale data
+        # doesn't accumulate and cause grab-frame failures.
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        # Drain a few warm-up frames — MSMF often returns junk on the
+        # first couple of reads after opening.
+        for _ in range(5):
+            cap.grab()
+
         self._cap = cap
         logger.info(
             "Camera opened: index=%d, resolution=%dx%d, target_fps=%d",
@@ -164,9 +173,16 @@ class CameraCapture:
 
         try:
             while self._running:
-                # If paused, sleep and skip frame capture
+                # If paused, still grab frames to keep the MSMF buffer
+                # drained (prevents -1072875772 errors on resume) but
+                # don't decode or yield them.
                 if self._paused:
-                    await asyncio.sleep(0.25)
+                    if self._cap is not None:
+                        await asyncio.get_event_loop().run_in_executor(
+                            None, self._cap.grab,
+                        )
+                    await asyncio.sleep(frame_interval)
+                    consecutive_failures = 0
                     continue
 
                 loop_start = time.time()
@@ -183,7 +199,7 @@ class CameraCapture:
                             "Camera failed %d consecutive reads — re-opening...",
                             consecutive_failures,
                         )
-                        self._reopen_camera()
+                        await self._reopen_camera_async()
                         consecutive_failures = 0
                     await asyncio.sleep(0.1)
                     continue
@@ -252,6 +268,20 @@ class CameraCapture:
             self._cap.release()
             self._cap = None
         logger.info("Re-opening camera...")
+        if not self._init_camera():
+            logger.error("Camera re-open failed")
+
+    async def _reopen_camera_async(self) -> None:
+        """Release, wait for the driver to settle, and re-open the camera."""
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+        # Give the MSMF driver time to fully release the device before
+        # attempting to re-acquire it — avoids immediate re-open failures.
+        logger.info("Re-opening camera (cooldown 2 s)...")
+        await asyncio.sleep(2.0)
+
         if not self._init_camera():
             logger.error("Camera re-open failed")
 
