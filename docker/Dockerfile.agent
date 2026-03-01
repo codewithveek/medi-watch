@@ -2,24 +2,29 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies for OpenCV and Ultralytics
+# Install system dependencies for OpenCV headless + Ultralytics
+# libgl1-mesa-glx was removed in Debian Trixie; libgl1 is the replacement.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 RUN pip install uv
 
-# Copy project files
-COPY pyproject.toml ./
+# Copy dependency manifests first (layer caching)
+COPY pyproject.toml uv.lock ./
+
+# Install deps — then swap opencv-python for headless variant (no X11 needed)
+RUN uv sync --no-dev \
+    && uv pip uninstall opencv-python \
+    && uv pip install opencv-python-headless
+
+# Copy application code (after deps for better caching)
 COPY agent/ ./agent/
 
-# Install dependencies
-RUN uv sync --no-dev
+# Create weights directory (model downloaded on first run if not mounted)
+RUN mkdir -p /app/weights
 
 # Expose port
 EXPOSE 8080
