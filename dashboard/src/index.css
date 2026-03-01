@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-background: #0f1117;
+    --color-surface: #1a1d27;
+    --color-surface-2: #22263a;
+    --color-border: #2e3347;
+    --color-text-primary: #e8eaf0;
+    --color-text-secondary: #8b91a8;
+    --color-critical: #ff4d4d;
+    --color-high: #ff8c42;
+    --color-medium: #ffd166;
+    --color-low: #06d6a0;
+    --color-accent: #4f8ef7;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+  }
+
+  /* Focus indicators must always be visible (accessibility requirement) */
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-mw-surface border border-mw-border rounded-lg p-4;
+  }
+
+  .card-nested {
+    @apply bg-mw-surface-2 border border-mw-border rounded-lg p-3;
+  }
+
+  .btn-primary {
+    @apply bg-mw-accent text-white px-4 py-2 rounded-lg font-medium 
+           hover:bg-mw-accent/90 transition-colors focus-visible:ring-2 
+           focus-visible:ring-mw-accent focus-visible:ring-offset-2 
+           focus-visible:ring-offset-mw-background;
+  }
+
+  .btn-danger {
+    @apply bg-mw-critical text-white px-4 py-2 rounded-lg font-medium
+           hover:bg-mw-critical/90 transition-colors;
+  }
+}

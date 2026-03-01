@@ -1,0 +1,326 @@
+# =============================================================================
+# MediWatch .gitignore
+# Python (uv) + React (Vite) + Vision AI + Docker + Secrets
+# =============================================================================
+
+
+# =============================================================================
+# SECRETS & ENVIRONMENT — NEVER COMMIT THESE
+# =============================================================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+
+# =============================================================================
+# MODEL WEIGHTS — TOO LARGE FOR GIT (use git-lfs or download script)
+# =============================================================================
+weights/
+*.pt
+*.onnx
+*.engine
+*.trt
+*.pb
+*.h5
+*.pkl
+*.joblib
+models/
+
+
+# =============================================================================
+# PYTHON
+# =============================================================================
+
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# uv / pip / packaging
+.venv/
+venv/
+env/
+.env/
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# uv cache (local — not the lock file, which SHOULD be committed)
+.uv/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+htmlcov/
+*.cover
+nosetests.xml
+pytest.ini.bak
+
+# Ruff cache
+.ruff_cache/
+
+# Jupyter (if used for analysis)
+.ipynb_checkpoints/
+*.ipynb
+
+# profiling
+*.prof
+
+
+# =============================================================================
+# NODE / REACT / VITE (dashboard/)
+# =============================================================================
+
+node_modules/
+dashboard/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Vite build output
+dashboard/dist/
+dashboard/.vite/
+dist/
+.vite/
+
+# TypeScript build info
+*.tsbuildinfo
+dashboard/tsconfig.tsbuildinfo
+
+# Storybook
+storybook-static/
+
+# Testing
+coverage/
+dashboard/coverage/
+.vitest/
+
+
+# =============================================================================
+# DOCKER
+# =============================================================================
+
+# Docker override files (local-only customizations)
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Docker volumes (if mapped locally)
+docker/volumes/
+docker/data/
+
+
+# =============================================================================
+# VIDEO & MEDIA — PATIENT DATA MUST NEVER BE COMMITTED
+# =============================================================================
+
+# Raw video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.m4v
+*.flv
+*.wmv
+
+# Images (processed frames, screenshots — except project assets)
+# Exclude all, then re-include specific allowed dirs below
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+
+# Re-include project assets (logos, icons, etc.)
+!dashboard/public/**/*.png
+!dashboard/public/**/*.jpg
+!dashboard/public/**/*.svg
+!dashboard/src/assets/**/*.png
+!dashboard/src/assets/**/*.jpg
+!dashboard/src/assets/**/*.svg
+!assets/*.png
+!assets/*.jpg
+!assets/*.svg
+
+# Audio files
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.aac
+
+# Dataset directories (never commit patient/clinical data)
+data/
+datasets/
+recordings/
+captures/
+test_videos/
+
+
+# =============================================================================
+# AUDIT LOGS & EVENT DATA (contain sensitive operational data)
+# =============================================================================
+logs/
+*.log
+audit/
+audit_*.json
+audit_*.csv
+events_*.json
+events_*.csv
+
+
+# =============================================================================
+# OPERATING SYSTEM
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.DocumentRevisions-V100
+.TemporaryItems
+.fseventsd
+.VolumeIcon.icns
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+
+# =============================================================================
+# EDITORS & IDEs
+# =============================================================================
+
+# VS Code (keep shared settings, ignore personal)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# JetBrains / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Vim / Neovim
+*.swp
+*.swo
+*.swn
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+.netrwhist
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Cursor
+.cursor/
+!.cursor/rules/     # Keep shared Cursor rules if present
+
+
+# =============================================================================
+# CLOUD & INFRASTRUCTURE
+# =============================================================================
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Kubernetes secrets
+*-secret.yaml
+*-secret.yml
+
+# AWS
+.aws/credentials
+
+
+# =============================================================================
+# MISC TOOLING
+# =============================================================================
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Lock files (only keep uv.lock — managed by uv)
+# uv.lock is intentionally NOT ignored (always commit it)
+package-lock.json     # Use npm — lock file committed for reproducibility
+# yarn.lock           # Uncomment if switching to yarn
+
+# Performance profiling outputs
+*.prof
+*.lprof
+profile_output/
+
+# Claude / AI assistant context
+.claude/
+!.claude/agents/    # Keep agent definitions if used
+mediwatch-prd.md
+AGENTS.md
