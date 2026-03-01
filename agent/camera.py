@@ -47,11 +47,11 @@ class CameraCapture:
 
     def _init_camera(self) -> bool:
         """Open the webcam. Returns True on success."""
-        cap = cv2.VideoCapture(self.settings.camera_index)
+        idx = self.settings.camera_index
+        cap = cv2.VideoCapture(idx)
+
         if not cap.isOpened():
-            logger.error(
-                "Failed to open camera at index %d", self.settings.camera_index
-            )
+            logger.error("Failed to open camera at index %d", idx)
             return False
 
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.camera_width)
@@ -61,7 +61,7 @@ class CameraCapture:
         self._cap = cap
         logger.info(
             "Camera opened: index=%d, resolution=%dx%d, target_fps=%d",
-            self.settings.camera_index,
+            idx,
             self.settings.camera_width,
             self.settings.camera_height,
             self.settings.camera_fps,
@@ -141,18 +141,23 @@ class CameraCapture:
         Runs the capture loop at the configured FPS. Uses asyncio.sleep
         to yield control between frames so the event loop stays responsive.
         """
-        if not self._init_camera():
-            logger.error("Camera initialization failed — stream will not start")
-            return
-
+        # Load the (potentially slow) YOLO model BEFORE opening the camera.
+        # On Windows MSMF, opening the camera early causes buffer overflows
+        # while the model is downloading / loading (~30-60s).
         if not self._init_model():
             logger.warning(
                 "YOLO model failed to load — streaming raw frames without pose detection"
             )
 
+        if not self._init_camera():
+            logger.error("Camera initialization failed — stream will not start")
+            return
+
         self._running = True
         frame_interval = 1.0 / self.settings.camera_fps
         frame_count = 0
+        consecutive_failures = 0
+        max_consecutive_failures = 30  # Re-open camera after this many failures
 
         logger.info("Camera stream started (target %.0f FPS)", self.settings.camera_fps)
 
@@ -166,9 +171,18 @@ class CameraCapture:
                 )
 
                 if not ret or frame is None:
-                    logger.warning("Failed to read frame — retrying...")
+                    consecutive_failures += 1
+                    if consecutive_failures >= max_consecutive_failures:
+                        logger.warning(
+                            "Camera failed %d consecutive reads — re-opening...",
+                            consecutive_failures,
+                        )
+                        self._reopen_camera()
+                        consecutive_failures = 0
                     await asyncio.sleep(0.1)
                     continue
+
+                consecutive_failures = 0  # reset on success
 
                 frame_count += 1
                 keypoints: list[list[float]] | None = None
@@ -211,6 +225,15 @@ class CameraCapture:
             logger.error("Camera stream error: %s", e, exc_info=True)
         finally:
             self.stop()
+
+    def _reopen_camera(self) -> None:
+        """Release and re-open the camera (recovers from MSMF failures)."""
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+        logger.info("Re-opening camera...")
+        if not self._init_camera():
+            logger.error("Camera re-open failed")
 
     def stop(self) -> None:
         """Release the camera and stop streaming."""

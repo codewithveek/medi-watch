@@ -63,9 +63,10 @@ class AlertDispatcher:
             entries.append(entry)
             self.audit_log.append(entry)
 
-        # Schedule Twilio call escalation if enabled
+        # Schedule Twilio call escalation if enabled and Twilio is configured
         if (
             self.settings.enable_call_alerts
+            and self._twilio_configured()
             and AlertChannel.CALL not in alert.alert_channels
             and not alert.acknowledged
         ):
@@ -148,28 +149,35 @@ class AlertDispatcher:
                 f"This is an AI-assisted alert. Human verification required."
             )
 
-            # Generate audio — the actual playback is handled by the dashboard
-            audio = await client.text_to_speech.convert(
+            # Generate audio — convert() returns an async generator for streaming
+            audio_chunks: list[bytes] = []
+            async for chunk in client.text_to_speech.convert(
                 text=text,
                 voice_id="21m00Tcm4TlvDq8ikWAM",  # Rachel — calm, professional
                 model_id="eleven_turbo_v2_5",
-            )
+            ):
+                audio_chunks.append(chunk)
 
-            logger.info("Voice alert generated for alert %s", alert.id)
-
-            # Audio bytes would be sent to dashboard via WebSocket for playback
-            # This is a placeholder — actual integration depends on SDK specifics
-            _ = audio
+            logger.info("Voice alert generated for alert %s (%d chunks)", alert.id, len(audio_chunks))
 
         except ImportError:
             logger.warning("elevenlabs package not installed — skipping voice alert")
         except Exception as e:
             raise RuntimeError(f"ElevenLabs TTS failed: {e}") from e
 
+    def _twilio_configured(self) -> bool:
+        """Check whether all required Twilio credentials are present."""
+        return bool(
+            self.settings.twilio_account_sid
+            and self.settings.twilio_auth_token
+            and self.settings.twilio_from_number
+            and self.settings.phone_numbers
+        )
+
     async def _dispatch_sms(self, alert: AlertPayload) -> None:
         """Send SMS via Twilio to configured phone numbers."""
-        if not self.settings.twilio_account_sid or not self.settings.phone_numbers:
-            logger.warning("Twilio not configured or no phone numbers — skipping SMS")
+        if not self._twilio_configured():
+            logger.warning("Twilio not fully configured — skipping SMS")
             return
 
         try:
@@ -203,8 +211,8 @@ class AlertDispatcher:
 
     async def _dispatch_call(self, alert: AlertPayload) -> None:
         """Make an automated call via Twilio for escalation."""
-        if not self.settings.twilio_account_sid or not self.settings.phone_numbers:
-            logger.warning("Twilio not configured — skipping call escalation")
+        if not self._twilio_configured():
+            logger.warning("Twilio not fully configured — skipping call escalation")
             return
 
         try:
